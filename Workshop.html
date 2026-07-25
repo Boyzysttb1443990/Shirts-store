@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shirt Store</title>
+    <meta name="description"
+        content="Shop stylish shirts and hoodies online at Boyzy Buy. Affordable fashion with fast delivery.">
+    <meta name="keywords" content="Boyzy Buy, shirt shop, hoodie, fashion store, buy clothes online">
+    <meta name="author" content="Boy Silavong">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="Workshop.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <h1 class="wordmark"><span class="wordmark-main">BOYZY</span><span class="wordmark-sub">SHOP</span></h1>
+            <p class="header-tag">Apparel Catalog <span class="dot">·</span> Lao &amp; Thai delivery and Vietnam</p>
+        </div>
+    </header>
+
+    <div class="shop-layout">
+        <main>
+            <section class="catalog-intro">
+                <p class="eyebrow">Shop the Rack</p>
+                <h2>Fresh fits, priced to move.</h2>
+            </section>
+            <div id="product-list"></div>
+        </main>
+
+        <aside class="order-panel">
+            <div id="cart" class="receipt">
+                <div class="receipt-header">
+                    <h2>Order Slip</h2>
+                    <span class="receipt-sub">Your selections</span>
+                </div>
+                <div id="cart-items"></div>
+                <p id="total-price">Total: 0 VND</p>
+                <button onclick="checkout()" class="btn-primary">Proceed to Checkout</button>
+            </div>
+
+            <div id="checkout-form" class="paper-card" style="display:none;">
+                <h2>Customer Information</h2>
+
+                <label for="fullname">Full name</label>
+                <input type="text" id="fullname" placeholder="e.g. Somchai P.">
+
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="e.g. somchai@example.com">
+
+                <label for="phone">Phone number</label>
+                <input type="tel" id="phone" placeholder="e.g. 020 5555 5555">
+
+                <label for="address">Shipping address</label>
+                <textarea id="address" placeholder="Street, village, district, city"></textarea>
+
+                <label for="payment">Payment method</label>
+                <select id="payment">
+                    <option value="bank">Bank Transfer</option>
+                    <option value="cod">Cash on Delivery</option>
+                    <option value="JDB">JDB</option>
+                    <option value="BCEL">BCEL</option>
+                    <option value="BIDV">BIDV</option>
+                    <option value="ALIPAY">ALIPAY</option>
+                    <option value="LDB">LDB</option>
+                </select>
+
+                <button onclick="submitOrder()" class="btn-primary">Confirm Order</button>
+            </div>
+
+            <div id="bank-info" class="paper-card stamped" style="display:none;">
+                <p class="stamp">Pay by transfer</p>
+                <p><b>Bank:</b> BCELone</p>
+                <p><b>Account name:</b> Boyzy buy</p>
+                <p><b>Account number:</b> 4751050407</p>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const products = [
+            { id: 1, name: "Frame Button-Up Shirt (Frame)", price: 500000, image: "https://i.pinimg.com/1200x/aa/90/cf/aa90cff663d02ecb264b6b4dca235c64.jpg" },
+            { id: 2, name: "Knit Shirt – Black/white", price: 800000, image: "https://i.pinimg.com/1200x/b1/b4/7f/b1b47f33ed75383583951f65afa9d151.jpg" },
+            { id: 3, name: "Shirt Special", price: 300000, image: "https://i.pinimg.com/1200x/33/7f/75/337f758e64d55b910179c2044444d094.jpg" },
+            { id: 4, name: "Knit Shirt – Black", price: 600000, image: "https://i.pinimg.com/736x/8a/e3/cd/8ae3cd45e08a7233bd94d0e22782a80a.jpg" },
+            { id: 5, name: "Knit Shirt – White", price: 250000, image: "https://i.pinimg.com/736x/ab/7d/b6/ab7db62f3546c13462c4f56d60165b78.jpg" },
+            { id: 6, name: "Hoodie – Red", price: 150000, image: "https://i.pinimg.com/1200x/44/f4/9e/44f49ed95795f2147d107696d80c5981.jpg" },
+            { id: 7, name: "TC1-TS2104", price: 200000, image: "https://i.pinimg.com/736x/2a/e9/f7/2ae9f7b30bc3f330cc4260c58eea50b0.jpg" },
+            { id: 8, name: "knit Shirt - green", price: 700000, image: "https://i.pinimg.com/736x/1d/2f/e4/1d2fe4450bba74d9af6c2c709c9deb09.jpg" },
+            { id: 9, name: "Buck Masson", price: 350000, image: "https://i.pinimg.com/1200x/2d/ce/d3/2dced344fb19d67a5d72a501a28d5ba0.jpg" },
+            { id: 10, name: "Carhartt WIP Ruben Stripe Ruuby shirt", price: 4196960, image: "https://i.pinimg.com/1200x/a6/30/a2/a630a2b411cf9bbb0b6c928dd11c2df8.jpg" },
+            { id: 11, name: "Lacoste kids", price: 2180000, image: "https://i.pinimg.com/1200x/f9/c6/d6/f9c6d60f6df6dff482d517c6dae17613.jpg" },
+            { id: 12, name: "Nike SB skate", price: 2075910, image: "https://i.pinimg.com/1200x/1a/c0/42/1ac042de2408c77827de4a6e2ecfbdee.jpg" },
+            { id: 13, name: "Playboy shirt", price: 800000, image: "https://i.pinimg.com/1200x/c0/53/ca/c053ca309531253295e1f3a8daef58f0.jpg" },
+            { id: 14, name: "Sleepwear LS Shirt", price: 305000, image: "https://i.pinimg.com/736x/7f/29/b0/7f29b09c12f135264f807ca043bad513.jpg" },
+            { id: 15, name: "Men's Flannel", price: 500000, image: "https://i.pinimg.com/736x/27/09/b2/2709b24d79718b78c5397258615a5b97.jpg" },
+            { id: 16, name: "H&M slim fit lien", price: 700000, image: "https://i.pinimg.com/736x/6e/88/8a/6e888a8e64de7c681f616ae35ae366cf.jpg" }
+        ];
+
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+        function displayProducts() {
+            const productContainer = document.getElementById("product-list");
+            productContainer.innerHTML = "";
+            products.forEach(product => {
+                const productElement = document.createElement("div");
+                productElement.classList.add("product");
+                productElement.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}" />
+                    <h2>${product.name}</h2>
+                    <p class="price-tag">${product.price.toLocaleString()} VND</p>
+                    <button onclick="addToCart(${product.id})">Add to Cart</button>
+                `;
+                productContainer.appendChild(productElement);
+            });
+        }
+
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            const item = cart.find(i => i.id === id);
+
+            if (item) {
+                item.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            updateCart();
+        }
+
+        function updateCart() {
+            const cartContainer = document.getElementById("cart-items");
+            const totalPriceElement = document.getElementById("total-price");
+            cartContainer.innerHTML = "";
+            let total = 0;
+
+            if (cart.length === 0) {
+                cartContainer.innerHTML = "<p class=\"cart-empty\">Your cart is empty</p>";
+                totalPriceElement.innerText = "Total: 0 VND";
+                localStorage.setItem("cart", JSON.stringify(cart));
+                return;
+            }
+
+            cart.forEach(item => {
+                total += item.price * item.quantity;
+                const cartItem = document.createElement("div");
+                cartItem.classList.add("cart-item");
+                cartItem.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}" />
+                    <div class="cart-item-info">
+                        <span class="cart-item-name">${item.name}</span>
+                        <span class="cart-item-price">${item.quantity} &times; ${item.price.toLocaleString()} VND</span>
+                    </div>
+                    <div class="cart-buttons">
+                        <button onclick="changeQuantity(${item.id}, -1)" aria-label="Decrease quantity">−</button>
+                        <button onclick="changeQuantity(${item.id}, 1)" aria-label="Increase quantity">+</button>
+                        <button onclick="removeFromCart(${item.id})" aria-label="Remove item" class="btn-remove">×</button>
+                    </div>
+                `;
+                cartContainer.appendChild(cartItem);
+            });
+
+            totalPriceElement.innerText = `Total: ${total.toLocaleString()} VND`;
+            localStorage.setItem("cart", JSON.stringify(cart));
+        }
+
+        function changeQuantity(id, amount) {
+            const item = cart.find(i => i.id === id);
+            if (item) {
+                item.quantity += amount;
+                if (item.quantity <= 0) {
+                    removeFromCart(id);
+                }
+            }
+            updateCart();
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(i => i.id !== id);
+            updateCart();
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                alert("Your cart is empty!");
+            } else {
+                document.getElementById("checkout-form").style.display = "block";
+                document.getElementById("checkout-form").scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+
+        function submitOrder() {
+            const name = document.getElementById("fullname").value;
+            const email = document.getElementById("email").value;
+            const phone = document.getElementById("phone").value;
+            const address = document.getElementById("address").value;
+            const payment = document.getElementById("payment").value;
+
+            if (!name || !email || !phone || !address) {
+                alert("Please fill all customer information!");
+                return;
+            }
+
+            alert("Order Successful!\nName: " + name + "\nEmail: " + email + "\nPayment:" + payment);
+
+            localStorage.removeItem("cart");
+            location.reload();
+        }
+
+        window.onload = function () {
+            displayProducts();
+            updateCart();
+
+            const paymentSelect = document.getElementById("payment");
+            if (paymentSelect) {
+                paymentSelect.addEventListener("change", function () {
+                    const bankSection = document.getElementById("bank-info");
+                    bankSection.style.display = this.value === "bank" ? "block" : "none";
+                });
+            }
+        };
+
+    </script>
+</body>
+
+</html>
