@@ -1,4 +1,3 @@
-// server.js — จุดเริ่มต้นของ backend
 require("dotenv").config();
 
 const express = require("express");
@@ -16,8 +15,10 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
-app.use(cors()); // อนุญาตให้หน้าเว็บ (Workshop.html) เรียก API นี้ได้
-app.use(express.json()); // อ่าน JSON body จาก fetch()
+const allowedOrigin = process.env.ALLOWED_ORIGIN;
+app.use(cors(allowedOrigin ? { origin: allowedOrigin } : {}));
+
+app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);

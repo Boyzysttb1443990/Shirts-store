@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boyzy Shop — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="Workshop.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <h1 class="wordmark"><span class="wordmark-main">BOYZY</span><span class="wordmark-sub">ADMIN</span></h1>
+            <p class="header-tag">Order Management <span class="dot">·</span> Staff only</p>
+            <div id="auth-status" class="auth-status"></div>
+        </div>
+    </header>
+
+    <div class="admin-layout">
+
+        <div id="admin-login-gate" class="paper-card admin-login-card">
+            <h2>Admin Sign In</h2>
+            <p class="admin-note">This page is for store staff only. Sign in with your admin account.</p>
+            <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                <label for="admin-phone">Phone number</label>
+                <input type="tel" id="admin-phone" placeholder="00000000" required>
+
+                <label for="admin-password">Password</label>
+                <input type="password" id="admin-password" placeholder="Your password" required>
+
+                <p id="admin-login-error" class="auth-error"></p>
+                <button type="submit" class="btn-primary">Sign In</button>
+            </form>
+        </div>
+
+        <!-- Dashboard: shown once an admin is logged in -->
+        <div id="admin-dashboard" style="display:none;">
+            <section class="catalog-intro">
+                <p class="eyebrow">Order Management</p>
+                <h2>Every order, all in one place.</h2>
+            </section>
+
+            <div class="admin-summary">
+                <div class="summary-card">
+                    <span class="summary-label">Total Orders</span>
+                    <span id="summary-count" class="summary-value">0</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Total Revenue</span>
+                    <span id="summary-revenue" class="summary-value">0 VND</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Pending</span>
+                    <span id="summary-pending" class="summary-value">0</span>
+                </div>
+            </div>
+
+            <div class="admin-toolbar">
+                <button type="button" class="btn-link" onclick="loadAllOrders()">Refresh</button>
+                <select id="status-filter" onchange="renderOrdersTable()">
+                    <option value="all">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+
+            <div class="paper-card admin-table-card">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <tr><td colspan="7" class="table-empty">Loading orders...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:4000/api";
+
+        let authToken = localStorage.getItem("boyzy_token") || null;
+        let currentUser = JSON.parse(localStorage.getItem("boyzy_user") || "null");
+        let allOrders = [];
+
+        function authHeaders() {
+            return authToken ? { "Authorization": "Bearer " + authToken } : {};
+        }
+
+        function setAuth(token, user) {
+            authToken = token;
+            currentUser = user;
+            localStorage.setItem("boyzy_token", token);
+            localStorage.setItem("boyzy_user", JSON.stringify(user));
+        }
+
+        function clearAuth() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem("boyzy_token");
+            localStorage.removeItem("boyzy_user");
+            renderGate();
+        }
+
+        function logout() {
+            clearAuth();
+        }
+
+        function renderGate() {
+            const statusEl = document.getElementById("auth-status");
+            const gate = document.getElementById("admin-login-gate");
+            const dashboard = document.getElementById("admin-dashboard");
+            const errorEl = document.getElementById("admin-login-error");
+
+            if (currentUser && currentUser.role === "admin") {
+                statusEl.innerHTML = `
+                    <span class="auth-greeting">Staff: ${currentUser.fullname.split(" ")[0]}</span>
+                    <button type="button" class="btn-link" onclick="logout()">Log out</button>
+                `;
+                gate.style.display = "none";
+                dashboard.style.display = "block";
+                loadAllOrders();
+            } else {
+                if (currentUser && currentUser.role !== "admin") {
+                    errorEl.textContent = "This account doesn't have admin access.";
+                    clearAuthQuiet();
+                }
+                statusEl.innerHTML = `<span class="auth-greeting">Not signed in</span>`;
+                gate.style.display = "block";
+                dashboard.style.display = "none";
+            }
+        }
+
+        function clearAuthQuiet() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem("boyzy_token");
+            localStorage.removeItem("boyzy_user");
+        }
+
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            const phone = document.getElementById("admin-phone").value.trim();
+            const password = document.getElementById("admin-password").value;
+            const errorEl = document.getElementById("admin-login-error");
+            errorEl.textContent = "";
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phone, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = data.error || "Sign in failed.";
+                    return;
+                }
+                if (data.user.role !== "admin") {
+                    errorEl.textContent = "This account doesn't have admin access.";
+                    return;
+                }
+                setAuth(data.token, data.user);
+                renderGate();
+            } catch (err) {
+                errorEl.textContent = "Can't reach the server. Is the backend running?";
+            }
+        }
+
+        async function loadAllOrders() {
+            const tbody = document.getElementById("orders-table-body");
+            tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Loading orders...</td></tr>`;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/admin/all`, { headers: authHeaders() });
+                if (res.status === 401 || res.status === 403) {
+                    clearAuth();
+                    return;
+                }
+                const data = await res.json();
+                allOrders = data.orders || [];
+                renderSummary();
+                renderOrdersTable();
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="table-empty">Can't reach the server</td></tr>`;
+            }
+        }
+
+        function renderSummary() {
+            document.getElementById("summary-count").textContent = allOrders.length;
+            const revenue = allOrders.reduce((sum, o) => sum + o.total, 0);
+            document.getElementById("summary-revenue").textContent = revenue.toLocaleString() + " VND";
+            const pending = allOrders.filter(o => o.status === "pending").length;
+            document.getElementById("summary-pending").textContent = pending;
+        }
+
+        function renderOrdersTable() {
+            const tbody = document.getElementById("orders-table-body");
+            const filter = document.getElementById("status-filter").value;
+            const rows = filter === "all" ? allOrders : allOrders.filter(o => o.status === filter);
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="table-empty">No orders match this filter</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(order => `
+                <tr>
+                    <td class="mono">#${order.id}</td>
+                    <td>
+                        <div class="cell-strong">${order.customer ? order.customer.fullname : "Unknown"}</div>
+                        <div class="cell-muted mono">${order.customer ? order.customer.phone : "—"}</div>
+                    </td>
+                    <td class="cell-items">${order.items.map(i => `${i.quantity}× ${i.name}`).join("<br>")}</td>
+                    <td class="mono cell-strong">${order.total.toLocaleString()} VND</td>
+                    <td class="mono">${order.payment}</td>
+                    <td class="mono cell-muted">${new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <select class="status-select status-${order.status}" onchange="changeStatus(${order.id}, this.value)">
+                            ${["pending", "confirmed", "shipped", "delivered", "cancelled"].map(s =>
+                                `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
+                            ).join("")}
+                        </select>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        async function changeStatus(orderId, status) {
+            try {
+                const res = await fetch(`${API_BASE}/orders/admin/${orderId}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", ...authHeaders() },
+                    body: JSON.stringify({ status })
+                });
+                if (!res.ok) {
+                    alert("Couldn't update status. Please try again.");
+                    loadAllOrders();
+                    return;
+                }
+                const data = await res.json();
+                const idx = allOrders.findIndex(o => o.id === orderId);
+                if (idx !== -1) allOrders[idx].status = data.order.status;
+                renderSummary();
+                renderOrdersTable();
+            } catch (err) {
+                alert("Can't reach the server.");
+            }
+        }
+
+        window.onload = renderGate;
+    </script>
+</body>
+
+</html>

@@ -1,10 +1,7 @@
 // middleware/auth.js
-// ตรวจสอบ JWT token ที่ส่งมาใน header: Authorization: Bearer <token>
-// ถ้า token ถูกต้อง จะแนบ req.user = { id, phone, fullname } แล้วให้ผ่านต่อไป
-// ถ้าไม่มี/ไม่ถูกต้อง จะตอบ 401 ทันที (ห้ามเข้าถึงข้อมูล)
-
 const jwt = require("jsonwebtoken");
 
+// ตรวจสอบ JWT token ที่ส่งมาใน header: Authorization: Bearer <token>
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -15,11 +12,19 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload; // { id, phone, fullname }
+    req.user = payload; // { id, phone, fullname, role }
     next();
   } catch (err) {
     return res.status(401).json({ error: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่" });
   }
 }
 
-module.exports = { requireAuth };
+// ใช้ต่อจาก requireAuth เสมอ — ต้องผ่าน requireAuth ก่อนถึงจะมี req.user
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "หน้านี้สำหรับผู้ดูแลระบบเท่านั้น" });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin };

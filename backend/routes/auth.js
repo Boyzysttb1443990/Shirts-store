@@ -14,14 +14,25 @@ function validateRegisterInput({ fullname, phone, password }) {
   return null;
 }
 
+// เบอร์โทรที่อยู่ใน ADMIN_PHONES (ตั้งค่าใน .env) จะได้สิทธิ์ admin อัตโนมัติตอนสมัคร
+// ตัวอย่างค่าใน .env:  ADMIN_PHONES=02012345,02099999
+function resolveRole(phone) {
+  const adminPhones = (process.env.ADMIN_PHONES || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return adminPhones.includes(phone) ? "admin" : "customer";
+}
+
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, phone: user.phone, fullname: user.fullname },
+    { id: user.id, phone: user.phone, fullname: user.fullname, role: user.role || "customer" },
     process.env.JWT_SECRET,
     { expiresIn: "30d" }
   );
 }
 
+// สมัครสมาชิกใหม่
 router.post("/register", async (req, res) => {
   const { fullname, phone, password } = req.body;
 
@@ -38,16 +49,18 @@ router.post("/register", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const role = resolveRole(cleanPhone);
 
-  const user = createUser({ fullname: fullname.trim(), phone: cleanPhone, passwordHash });
+  const user = createUser({ fullname: fullname.trim(), phone: cleanPhone, passwordHash, role });
   const token = signToken(user);
 
   res.status(201).json({
     token,
-    user: { id: user.id, fullname: user.fullname, phone: user.phone },
+    user: { id: user.id, fullname: user.fullname, phone: user.phone, role: user.role },
   });
 });
 
+// เข้าสู่ระบบ
 router.post("/login", async (req, res) => {
   const { phone, password } = req.body;
 
@@ -69,10 +82,11 @@ router.post("/login", async (req, res) => {
 
   res.json({
     token,
-    user: { id: user.id, fullname: user.fullname, phone: user.phone },
+    user: { id: user.id, fullname: user.fullname, phone: user.phone, role: user.role || "customer" },
   });
 });
 
+// ดึงข้อมูลผู้ใช้ปัจจุบันจาก token
 router.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
