@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shirt Store</title>
+    <title>Boyzy Shop</title>
     <meta name="description"
         content="Shop stylish shirts and hoodies online at Boyzy Buy. Affordable fashion with fast delivery.">
     <meta name="keywords" content="Boyzy Buy, shirt shop, hoodie, fashion store, buy clothes online">
@@ -19,7 +19,11 @@
     <header class="site-header">
         <div class="header-inner">
             <h1 class="wordmark"><span class="wordmark-main">BOYZY</span><span class="wordmark-sub">SHOP</span></h1>
-            <p class="header-tag">Apparel Catalog <span class="dot">·</span> Lao &amp; Thai delivery and Vietnam</p>
+            <p class="header-tag">Apparel Catalog <span class="dot">·</span> Lao &amp; Thai delivery-VietNam</p>
+
+            <div id="auth-status" class="auth-status">
+
+            </div>
         </div>
     </header>
 
@@ -33,6 +37,50 @@
         </main>
 
         <aside class="order-panel">
+
+            <div id="auth-panel" class="paper-card">
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Login</button>
+                    <button type="button" class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">Register</button>
+                </div>
+
+                <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                    <label for="login-phone">Phone number</label>
+                    <input type="tel" id="login-phone" placeholder="e.g. 020 5555 5555" required>
+
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Your password" required>
+
+                    <p id="login-error" class="auth-error"></p>
+                    <button type="submit" class="btn-primary">Log In</button>
+                </form>
+
+                <form id="register-form" class="auth-form" style="display:none;" onsubmit="handleRegister(event)">
+                    <label for="register-fullname">Full name</label>
+                    <input type="text" id="register-fullname" placeholder="Full name" required>
+
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" placeholder="Your email" required>
+
+                    <label for="register-phone">Phone number</label>
+                    <input type="tel" id="register-phone" placeholder="xxxxxxxxxx" required>
+
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" placeholder="At least 6 characters" required minlength="6">
+
+                    <p id="register-error" class="auth-error"></p>
+                    <button type="submit" class="btn-primary">Create Account</button>
+                </form>
+            </div>
+
+            <div id="order-history-panel" class="paper-card" style="display:none;">
+                <div class="history-header">
+                    <h2>My Orders</h2>
+                    <button type="button" class="btn-link" onclick="loadOrderHistory()">Refresh</button>
+                </div>
+                <div id="order-history-list"></div>
+            </div>
+
             <div id="cart" class="receipt">
                 <div class="receipt-header">
                     <h2>Order Slip</h2>
@@ -44,24 +92,13 @@
             </div>
 
             <div id="checkout-form" class="paper-card" style="display:none;">
-                <h2>Customer Information</h2>
-
-                <label for="fullname">Full name</label>
-                <input type="text" id="fullname" placeholder="e.g. Somchai P.">
-
-                <label for="email">Email</label>
-                <input type="email" id="email" placeholder="e.g. somchai@example.com">
-
-                <label for="phone">Phone number</label>
-                <input type="tel" id="phone" placeholder="e.g. 020 5555 5555">
+                <h2>Shipping Details</h2>
 
                 <label for="address">Shipping address</label>
                 <textarea id="address" placeholder="Street, village, district, city"></textarea>
 
                 <label for="payment">Payment method</label>
                 <select id="payment">
-                    <option value="bank">Bank Transfer</option>
-                    <option value="cod">Cash on Delivery</option>
                     <option value="JDB">JDB</option>
                     <option value="BCEL">BCEL</option>
                     <option value="BIDV">BIDV</option>
@@ -69,6 +106,7 @@
                     <option value="LDB">LDB</option>
                 </select>
 
+                <p id="order-error" class="auth-error"></p>
                 <button onclick="submitOrder()" class="btn-primary">Confirm Order</button>
             </div>
 
@@ -82,6 +120,9 @@
     </div>
 
     <script>
+
+        const API_BASE = "http://localhost:4000/api";
+
         const products = [
             { id: 1, name: "Frame Button-Up Shirt (Frame)", price: 500000, image: "https://i.pinimg.com/1200x/aa/90/cf/aa90cff663d02ecb264b6b4dca235c64.jpg" },
             { id: 2, name: "Knit Shirt – Black/white", price: 800000, image: "https://i.pinimg.com/1200x/b1/b4/7f/b1b47f33ed75383583951f65afa9d151.jpg" },
@@ -102,6 +143,150 @@
         ];
 
         let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        let authToken = localStorage.getItem("boyzy_token") || null;
+        let currentUser = JSON.parse(localStorage.getItem("boyzy_user") || "null");
+
+        function authHeaders() {
+            return authToken ? { "Authorization": "Bearer " + authToken } : {};
+        }
+
+        function setAuth(token, user) {
+            authToken = token;
+            currentUser = user;
+            localStorage.setItem("boyzy_token", token);
+            localStorage.setItem("boyzy_user", JSON.stringify(user));
+            renderAuthStatus();
+        }
+
+        function clearAuth() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem("boyzy_token");
+            localStorage.removeItem("boyzy_user");
+            renderAuthStatus();
+        }
+
+        function logout() {
+            clearAuth();
+        }
+
+        function renderAuthStatus() {
+            const statusEl = document.getElementById("auth-status");
+            const authPanel = document.getElementById("auth-panel");
+            const historyPanel = document.getElementById("order-history-panel");
+
+            if (currentUser) {
+                statusEl.innerHTML = `
+                    <span class="auth-greeting">Hi, ${currentUser.fullname.split(" ")[0]}</span>
+                    <button type="button" class="btn-link" onclick="logout()">Log out</button>
+                `;
+                authPanel.style.display = "none";
+                historyPanel.style.display = "block";
+                loadOrderHistory();
+            } else {
+                statusEl.innerHTML = `<span class="auth-greeting">Not logged in</span>`;
+                authPanel.style.display = "block";
+                historyPanel.style.display = "none";
+            }
+        }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll(".auth-tab").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.tab === tab);
+            });
+            document.getElementById("login-form").style.display = tab === "login" ? "block" : "none";
+            document.getElementById("register-form").style.display = tab === "register" ? "block" : "none";
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const phone = document.getElementById("login-phone").value.trim();
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+            const errorEl = document.getElementById("login-error");
+            errorEl.textContent = "";
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phone, email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = data.error || "Login failed. Please try again.";
+                    return;
+                }
+                setAuth(data.token, data.user);
+            } catch (err) {
+                errorEl.textContent = "Can't reach the server. Is the backend running?";
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const fullname = document.getElementById("register-fullname").value.trim();
+            const email = document.getElementById("register-email").value.trim();
+            const phone = document.getElementById("register-phone").value.trim();
+            const password = document.getElementById("register-password").value;
+            const errorEl = document.getElementById("register-error");
+            errorEl.textContent = "";
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ fullname, email, phone, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = data.error || "Registration failed. Please try again.";
+                    return;
+                }
+                setAuth(data.token, data.user);
+            } catch (err) {
+                errorEl.textContent = "Can't reach the server. Is the backend running?";
+            }
+        }
+
+        async function loadOrderHistory() {
+            const listEl = document.getElementById("order-history-list");
+            if (!authToken) return;
+
+            listEl.innerHTML = `<p class="cart-empty">Loading...</p>`;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders`, { headers: authHeaders() });
+                if (res.status === 401) {
+                    clearAuth();
+                    return;
+                }
+                const data = await res.json();
+
+                if (!data.orders || data.orders.length === 0) {
+                    listEl.innerHTML = `<p class="cart-empty">No orders yet</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = data.orders.map(order => `
+                    <div class="order-entry">
+                        <div class="order-entry-top">
+                            <span class="order-id">Order #${order.id}</span>
+                            <span class="order-status">${order.status}</span>
+                        </div>
+                        <div class="order-entry-items">
+                            ${order.items.map(i => `${i.quantity}× ${i.name}`).join(", ")}
+                        </div>
+                        <div class="order-entry-bottom">
+                            <span>${new Date(order.createdAt).toLocaleDateString()}</span>
+                            <span class="order-total">${order.total.toLocaleString()} VND</span>
+                        </div>
+                    </div>
+                `).join("");
+            } catch (err) {
+                listEl.innerHTML = `<p class="cart-empty">Can't reach the server</p>`;
+            }
+        }
 
         function displayProducts() {
             const productContainer = document.getElementById("product-list");
@@ -184,36 +369,68 @@
             updateCart();
         }
 
+        // ---------- Checkout (ตอนนี้ต้อง login ก่อน เพื่อให้ผูกคำสั่งซื้อกับบัญชี) ----------
         function checkout() {
             if (cart.length === 0) {
                 alert("Your cart is empty!");
-            } else {
-                document.getElementById("checkout-form").style.display = "block";
-                document.getElementById("checkout-form").scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
             }
+            if (!currentUser) {
+                alert("Please log in or create an account first, so we can save your order to your account.");
+                document.getElementById("auth-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+            }
+            document.getElementById("checkout-form").style.display = "block";
+            document.getElementById("checkout-form").scrollIntoView({ behavior: "smooth", block: "start" });
         }
 
-        function submitOrder() {
-            const name = document.getElementById("fullname").value;
-            const email = document.getElementById("email").value;
-            const phone = document.getElementById("phone").value;
-            const address = document.getElementById("address").value;
+        async function submitOrder() {
+            const address = document.getElementById("address").value.trim();
             const payment = document.getElementById("payment").value;
+            const errorEl = document.getElementById("order-error");
+            errorEl.textContent = "";
 
-            if (!name || !email || !phone || !address) {
-                alert("Please fill all customer information!");
+            if (!address) {
+                errorEl.textContent = "Please enter a shipping address.";
                 return;
             }
 
-            alert("Order Successful!\nName: " + name + "\nEmail: " + email + "\nPayment:" + payment);
+            const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-            localStorage.removeItem("cart");
-            location.reload();
+            try {
+                const res = await fetch(`${API_BASE}/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", ...authHeaders() },
+                    body: JSON.stringify({ items: cart, total, address, payment })
+                });
+                const data = await res.json();
+
+                if (res.status === 401) {
+                    errorEl.textContent = "Your session expired. Please log in again.";
+                    clearAuth();
+                    return;
+                }
+                if (!res.ok) {
+                    errorEl.textContent = data.error || "Something went wrong. Please try again.";
+                    return;
+                }
+
+                alert("Order placed! You can view it anytime under My Orders.");
+                cart = [];
+                localStorage.removeItem("cart");
+                updateCart();
+                document.getElementById("checkout-form").style.display = "none";
+                document.getElementById("bank-info").style.display = "none";
+                loadOrderHistory();
+            } catch (err) {
+                errorEl.textContent = "Can't reach the server. Is the backend running?";
+            }
         }
 
         window.onload = function () {
             displayProducts();
             updateCart();
+            renderAuthStatus();
 
             const paymentSelect = document.getElementById("payment");
             if (paymentSelect) {
