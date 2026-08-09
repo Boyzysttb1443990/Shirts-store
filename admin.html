@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="Workshop.css">
     <link rel="stylesheet" href="admin.css">
 </head>
 
@@ -99,7 +99,7 @@
 
     <script>
         // ต้องตรงกับ API_BASE ในไฟล์ Workshop.html
-        const API_BASE = "http://localhost:4000/api";
+        const API_BASE = "https://shirts-store.onrender.com/api";
 
         let authToken = localStorage.getItem("boyzy_token") || null;
         let currentUser = JSON.parse(localStorage.getItem("boyzy_user") || "null");
