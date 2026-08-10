@@ -236,16 +236,16 @@
 
             tbody.innerHTML = rows.map(order => `
                 <tr>
-                    <td class="mono">#${order.id}</td>
-                    <td>
+                    <td class="mono" data-label="Order">#${order.id}</td>
+                    <td data-label="Customer">
                         <div class="cell-strong">${order.customer ? order.customer.fullname : "Unknown"}</div>
                         <div class="cell-muted mono">${order.customer ? order.customer.phone : "—"}</div>
                     </td>
-                    <td class="cell-items">${order.items.map(i => `${i.quantity}× ${i.name}${i.size ? ` (${i.size})` : ""}`).join("<br>")}</td>
-                    <td class="mono cell-strong">${order.total.toLocaleString()} VND</td>
-                    <td class="mono">${order.payment}</td>
-                    <td class="mono cell-muted">${new Date(order.createdAt).toLocaleDateString()}</td>
-                    <td>
+                    <td class="cell-items" data-label="Items">${order.items.map(i => `${i.quantity}× ${i.name}${i.size ? ` (${i.size})` : ""}`).join("<br>")}</td>
+                    <td class="mono cell-strong" data-label="Total">${order.total.toLocaleString()} VND</td>
+                    <td class="mono" data-label="Payment">${order.payment}</td>
+                    <td class="mono cell-muted" data-label="Date">${new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Status">
                         <select class="status-select status-${order.status}" onchange="changeStatus(${order.id}, this.value)">
                             ${["pending", "confirmed", "shipped", "delivered", "cancelled"].map(s =>
                                 `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
