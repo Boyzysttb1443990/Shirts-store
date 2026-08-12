@@ -911,3 +911,44 @@ select:focus-visible {
 .stamped-inline p b {
     font-family: var(--font-mono);
 }
+
+/* ---------- Notice modal ---------- */
+.notice-card {
+    max-width: 340px;
+    text-align: center;
+    padding: 32px 26px 26px;
+    animation: notice-pop 0.2s ease;
+}
+
+.notice-icon {
+    font-size: 34px;
+    margin-bottom: 4px;
+}
+
+.notice-message {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-on-paper);
+    margin: 12px 0 22px;
+}
+
+.notice-card .btn-primary {
+    margin-top: 0;
+}
+
+@keyframes notice-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notice-card {
+        animation: none !important;
+    }
+}
