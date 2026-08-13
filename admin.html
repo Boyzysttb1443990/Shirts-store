@@ -268,18 +268,19 @@
                     <td class="mono" data-label="Payment">${order.payment}</td>
                     <td class="mono cell-muted" data-label="Date">${new Date(order.createdAt).toLocaleDateString()}</td>
                     <td data-label="Status">
-                        ${renderStatusCell(order)}
+                        <select class="status-select status-${order.status}" data-order-id="${order.id}" data-prev-status="${order.status}" onchange="handleStatusChange(this)">
+                            ${["pending", "confirmed", "shipped", "delivered", "cancelled"].map(s =>
+                                `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
+                            ).join("")}
+                        </select>
                     </td>
                 </tr>
             `).join("");
         }
 
-        // ---------- Status change confirmation ----------
-        // ลำดับปกติของสถานะ ใช้เช็คว่าแอดมินกำลัง "ข้ามขั้นตอน" อยู่ไหม (เช่น pending -> delivered ตรงๆ)
         const STATUS_SEQUENCE = ["pending", "confirmed", "shipped", "delivered"];
 
-        let pendingStatusChange = null; // { orderId, newStatus, prevStatus, selectEl }
-
+        let pendingStatusChange = null; 
         function handleStatusChange(selectEl) {
             const orderId = Number(selectEl.dataset.orderId);
             const prevStatus = selectEl.dataset.prevStatus;
@@ -324,7 +325,6 @@
 
         function cancelStatusChange() {
             if (pendingStatusChange) {
-                // คืนค่า dropdown กลับไปที่สถานะเดิม เพราะการเปลี่ยนใน <select> เกิดขึ้นก่อนที่จะยืนยันแล้ว
                 pendingStatusChange.selectEl.value = pendingStatusChange.prevStatus;
             }
             pendingStatusChange = null;
