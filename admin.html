@@ -268,11 +268,7 @@
                     <td class="mono" data-label="Payment">${order.payment}</td>
                     <td class="mono cell-muted" data-label="Date">${new Date(order.createdAt).toLocaleDateString()}</td>
                     <td data-label="Status">
-                        <select class="status-select status-${order.status}" data-order-id="${order.id}" data-prev-status="${order.status}" onchange="handleStatusChange(this)">
-                            ${["pending", "confirmed", "shipped", "delivered", "cancelled"].map(s =>
-                                `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
-                            ).join("")}
-                        </select>
+                        ${renderStatusCell(order)}
                     </td>
                 </tr>
             `).join("");
@@ -371,7 +367,6 @@
             }
         }
 
-        // ---------- Notice modal (styled replacement for browser alert()) ----------
         function showNotice(message) {
             document.getElementById("notice-modal-message").textContent = message;
             document.getElementById("notice-modal-overlay").style.display = "flex";
