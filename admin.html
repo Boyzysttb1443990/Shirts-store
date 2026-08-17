@@ -106,6 +106,19 @@
         </div>
     </div>
 
+    <!-- Confirm modal — asks before any status change, with an extra warning for risky jumps -->
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display:none;" onclick="closeConfirmModalOnOverlay(event)">
+        <div class="modal-card notice-card">
+            <div class="notice-icon">⚠️</div>
+            <p id="confirm-modal-message" class="notice-message"></p>
+            <p id="confirm-modal-warning" class="confirm-warning" style="display:none;"></p>
+            <div class="confirm-buttons">
+                <button type="button" class="btn-secondary" onclick="cancelStatusChange()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="confirmStatusChange()">Yes, Update</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ต้องตรงกับ API_BASE ในไฟล์ Workshop.html
         const API_BASE = "https://shirts-store.onrender.com/api";
@@ -255,14 +268,108 @@
                     <td class="mono" data-label="Payment">${order.payment}</td>
                     <td class="mono cell-muted" data-label="Date">${new Date(order.createdAt).toLocaleDateString()}</td>
                     <td data-label="Status">
-                        <select class="status-select status-${order.status}" onchange="changeStatus(${order.id}, this.value)">
-                            ${["pending", "confirmed", "shipped", "delivered", "cancelled"].map(s =>
-                                `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
-                            ).join("")}
-                        </select>
+                        ${renderStatusCell(order)}
                     </td>
                 </tr>
             `).join("");
+        }
+
+        // ---------- Status cell: forward-only progression ----------
+        // เมื่อสถานะผ่านจุดใดไปแล้ว ตัวเลือกที่ "ย้อนกลับ" จะถูกซ่อนออกจาก dropdown เพื่อกันกดผิดย้อนสถานะ
+        // พอถึง delivered หรือ cancelled (สถานะสุดท้าย) จะล็อก dropdown ทั้งอันไม่ให้แก้ไขต่อ
+        function renderStatusCell(order) {
+            const currentIdx = STATUS_SEQUENCE.indexOf(order.status);
+            const isLocked = order.status === "delivered" || order.status === "cancelled";
+
+            if (isLocked) {
+                return `
+                    <select class="status-select status-${order.status}" disabled title="This order is in a final state and can no longer be changed">
+                        <option selected>${order.status}</option>
+                    </select>
+                `;
+            }
+
+            // ตัวเลือกที่โชว์ได้: สถานะปัจจุบันเป็นต้นไปในลำดับ + cancelled เสมอ (ยกเลิกได้ทุกจุดก่อนถึง delivered)
+            const availableStatuses = STATUS_SEQUENCE.slice(currentIdx).concat(["cancelled"]);
+
+            return `
+                <select class="status-select status-${order.status}" data-order-id="${order.id}" data-prev-status="${order.status}" onchange="handleStatusChange(this)">
+                    ${availableStatuses.map(s =>
+                        `<option value="${s}" ${s === order.status ? "selected" : ""}>${s}</option>`
+                    ).join("")}
+                </select>
+            `;
+        }
+
+        // ---------- Status change confirmation ----------
+        // ลำดับปกติของสถานะ ใช้เช็คว่าแอดมินกำลัง "ข้ามขั้นตอน" อยู่ไหม (เช่น pending -> delivered ตรงๆ)
+        const STATUS_SEQUENCE = ["pending", "confirmed", "shipped", "delivered"];
+
+        let pendingStatusChange = null; // { orderId, newStatus, prevStatus, selectEl }
+
+        function handleStatusChange(selectEl) {
+            const orderId = Number(selectEl.dataset.orderId);
+            const prevStatus = selectEl.dataset.prevStatus;
+            const newStatus = selectEl.value;
+
+            if (newStatus === prevStatus) return;
+
+            pendingStatusChange = { orderId, newStatus, prevStatus, selectEl };
+
+            const order = allOrders.find(o => o.id === orderId);
+            const customerName = order && order.customer ? order.customer.fullname : "this customer";
+
+            document.getElementById("confirm-modal-message").textContent =
+                `Change order #${orderId} (${customerName}) from "${prevStatus}" to "${newStatus}"?`;
+
+            const warningEl = document.getElementById("confirm-modal-warning");
+            const warning = getStatusChangeWarning(prevStatus, newStatus);
+            if (warning) {
+                warningEl.textContent = warning;
+                warningEl.style.display = "block";
+            } else {
+                warningEl.style.display = "none";
+            }
+
+            document.getElementById("confirm-modal-overlay").style.display = "flex";
+        }
+
+        function getStatusChangeWarning(prevStatus, newStatus) {
+            if (newStatus === "cancelled") {
+                return "⚠️ Cancelling an order that may already be paid can't be easily undone. Double check with the customer or payment records first.";
+            }
+            if (newStatus === "delivered") {
+                return "⚠️ Only confirm this if the customer has actually received the package in hand — not just that it was handed to a courier.";
+            }
+            const prevIdx = STATUS_SEQUENCE.indexOf(prevStatus);
+            const newIdx = STATUS_SEQUENCE.indexOf(newStatus);
+            if (prevIdx !== -1 && newIdx !== -1 && newIdx - prevIdx > 1) {
+                return `⚠️ This skips over "${STATUS_SEQUENCE[prevIdx + 1]}" — make sure that stage genuinely already happened.`;
+            }
+            return null;
+        }
+
+        function cancelStatusChange() {
+            if (pendingStatusChange) {
+                // คืนค่า dropdown กลับไปที่สถานะเดิม เพราะการเปลี่ยนใน <select> เกิดขึ้นก่อนที่จะยืนยันแล้ว
+                pendingStatusChange.selectEl.value = pendingStatusChange.prevStatus;
+            }
+            pendingStatusChange = null;
+            document.getElementById("confirm-modal-overlay").style.display = "none";
+        }
+
+        function closeConfirmModalOnOverlay(event) {
+            if (event.target.id === "confirm-modal-overlay") {
+                cancelStatusChange(); // คลิกนอกกล่อง = ยกเลิกอย่างปลอดภัย ไม่ใช่ยืนยันเฉยๆ
+            }
+        }
+
+        async function confirmStatusChange() {
+            if (!pendingStatusChange) return;
+            const { orderId, newStatus } = pendingStatusChange;
+            document.getElementById("confirm-modal-overlay").style.display = "none";
+            await changeStatus(orderId, newStatus);
+            pendingStatusChange = null;
         }
 
         async function changeStatus(orderId, status) {

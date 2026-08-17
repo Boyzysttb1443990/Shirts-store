@@ -1,3 +1,5 @@
+/* admin.css — extends Workshop.css tokens for the staff dashboard */
+
 .admin-layout {
     max-width: 1100px;
     margin: 0 auto;
@@ -201,4 +203,33 @@
     .status-select {
         margin-left: auto;
     }
+}
+
+/* ---------- Confirm modal (status change) ---------- */
+.confirm-warning {
+    background: #FFF4E5;
+    border: 1px dashed var(--orange-dark);
+    color: #8A4B0A;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin: -8px 0 16px;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.confirm-buttons .btn-primary,
+.confirm-buttons .btn-secondary {
+    margin-top: 0;
+    flex: 1;
+}
+
+.status-select:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
