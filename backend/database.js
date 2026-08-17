@@ -26,6 +26,11 @@ function findUserByPhone(phone) {
   return data.users.find((u) => u.phone === phone) || null;
 }
 
+function findUserById(id) {
+  const data = loadData();
+  return data.users.find((u) => u.id === id) || null;
+}
+
 function createUser({ fullname, phone, passwordHash, role }) {
   const data = loadData();
   const user = {
@@ -95,6 +100,7 @@ function updateOrderStatus(orderId, status) {
 
 module.exports = {
   findUserByPhone,
+  findUserById,
   createUser,
   createOrder,
   getOrdersByUser,
